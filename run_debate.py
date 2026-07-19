@@ -5,7 +5,7 @@ Multi-agent debate runner for ai-hedge-fund.
 Usage:
     python run_debate.py --topic "Should I invest in S&P500 now?"
     python run_debate.py --topic "AAPL估值" --stocks AAPL,MSFT,GOOGL
-    python run_debate.py --topic "A股大盘走势" --agents buffett,lynch --rounds 3
+    python run_debate.py --topic "摩根标普500ETF基金(019305)估值" --agents buffett,lynch --rounds 3
 
 Environment:
     OPENAI_API_KEY    — MiMo API key

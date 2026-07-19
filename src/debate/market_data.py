@@ -101,13 +101,6 @@ class MarketDataBundle:
                 if idx.dividend_yield:
                     lines.append(f"    股息率: {idx.dividend_yield:.2f}%")
 
-        # ── CN indices ──
-        if self.cn_indices:
-            lines.append("\n🇨🇳 A股指数:")
-            for idx in self.cn_indices:
-                chg = f" ({idx.change_pct:+.2f}%)" if idx.change_pct is not None else ""
-                lines.append(f"  {idx.name}: {idx.price:.2f}{chg}")
-
         # ── Individual stocks ──
         if self.stocks:
             lines.append("\n📈 个股详情:")
@@ -308,50 +301,6 @@ def fetch_stock_data(ticker: str) -> StockSnapshot | None:
         return None
 
 
-def fetch_cn_data() -> list[IndexSnapshot]:
-    """Fetch A-share index data via akshare."""
-    try:
-        import akshare as ak
-    except ImportError:
-        logger.warning("akshare not installed, skipping CN data")
-        return []
-
-    indices = []
-    cn_tickers = [
-        ("sh000001", "上证指数"),
-        ("sh000300", "沪深300"),
-        ("sz399006", "创业板指"),
-        ("sh000016", "上证50"),
-        ("sh000905", "中证500"),
-    ]
-
-    for symbol, name in cn_tickers:
-        try:
-            df = ak.stock_zh_index_daily(symbol=symbol)
-            if df is None or len(df) < 2:
-                continue
-            latest = df.iloc[-1]
-            prev = df.iloc[-2]
-            price = float(latest["close"])
-            chg = _pct_change(price, float(prev["close"]))
-            indices.append(IndexSnapshot(name=name, price=price, change_pct=chg))
-        except Exception as e:
-            logger.warning(f"CN index {name} failed: {e}")
-
-    # ── QVIX (中国波动率指数) ──
-    try:
-        qvix = ak.index_option_300etf_qvix()
-        if qvix is not None and len(qvix) > 0:
-            latest_qvix = qvix.iloc[-1]
-            qvix_val = float(latest_qvix["close"])
-            # Find a name slot to attach QVIX
-            if indices:
-                indices[0].extra["QVIX波动率"] = f"{qvix_val:.2f}"
-    except Exception as e:
-        logger.warning(f"QVIX fetch failed: {e}")
-
-    return indices
-
 
 def fetch_recent_trend(ticker: str = "SPY", days: int = 10) -> str:
     """Fetch recent daily trend for context."""
@@ -406,9 +355,6 @@ def get_market_data(
             snap = fetch_stock_data(ticker)
             if snap:
                 bundle.stocks.append(snap)
-
-    # A-share indices
-    bundle.cn_indices = fetch_cn_data()
 
     # Recent trend
     bundle.recent_trend = fetch_recent_trend("SPY", 10)
