@@ -5,6 +5,8 @@ import pandas as pd
 import requests
 import time
 
+from pathlib import Path
+
 logger = logging.getLogger(__name__)
 
 from src.data.cache import get_cache
@@ -24,6 +26,10 @@ from src.data.models import (
 
 # Global cache instance
 _cache = get_cache()
+
+# A股数据源配置
+USE_A_SHARE_DB = os.environ.get("USE_A_SHARE_DB", "true").lower() == "true"
+A_SHARE_DB_PATH = os.environ.get("A_SHARE_DB_PATH", "/root/a-share-quant-sim/data/quant_stocks.db")
 
 
 def _make_api_request(url: str, headers: dict, method: str = "GET", json_data: dict = None, max_retries: int = 3) -> requests.Response:
@@ -61,11 +67,21 @@ def _make_api_request(url: str, headers: dict, method: str = "GET", json_data: d
 
 
 def get_prices(ticker: str, start_date: str, end_date: str, api_key: str = None) -> list[Price]:
-    """Fetch price data from cache or API."""
-    # Create a cache key that includes all parameters to ensure exact matches
+    """Fetch price data from cache or API (supports both A-share DB and financialdatasets.ai)."""
+    
+    # 如果启用A股数据库，优先从本地数据库读取
+    if USE_A_SHARE_DB:
+        try:
+            from src.tools.a_share_api import get_prices_from_db
+            prices = get_prices_from_db(ticker, start_date, end_date, A_SHARE_DB_PATH)
+            if prices:
+                return prices
+        except Exception as e:
+            logger.warning(f"A-share DB read failed for {ticker}, falling back to API: {e}")
+    
+    # 从cache或API获取（美股等）
     cache_key = f"{ticker}_{start_date}_{end_date}"
     
-    # Check cache first - simple exact match
     if cached_data := _cache.get_prices(cache_key):
         return [Price(**price) for price in cached_data]
 
@@ -103,11 +119,21 @@ def get_financial_metrics(
     limit: int = 10,
     api_key: str = None,
 ) -> list[FinancialMetrics]:
-    """Fetch financial metrics from cache or API."""
-    # Create a cache key that includes all parameters to ensure exact matches
+    """Fetch financial metrics from cache or API (supports A-share local DB)."""
+    
+    # 如果启用A股数据库，优先从本地数据库读取
+    if USE_A_SHARE_DB:
+        try:
+            from src.tools.a_share_api import get_financial_metrics_from_db
+            metrics = get_financial_metrics_from_db(ticker, end_date, period, limit)
+            if metrics:
+                return metrics
+        except Exception as e:
+            logger.warning(f"A-share financials read failed for {ticker}, falling back to API: {e}")
+    
+    # 从cache或API获取（美股等）
     cache_key = f"{ticker}_{period}_{end_date}_{limit}"
     
-    # Check cache first - simple exact match
     if cached_data := _cache.get_financial_metrics(cache_key):
         return [FinancialMetrics(**metric) for metric in cached_data]
 
