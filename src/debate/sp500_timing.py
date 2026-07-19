@@ -209,13 +209,45 @@ def format_summary(result: TimingResult) -> str:
     lines.append(f"  最终建议: {result.final_signal} {result.final_advice}")
     lines.append("═" * 60)
     
+    # 针对摩根标普基金的具体行动建议
+    lines.append("")
+    lines.append("  📌 针对摩根标普500ETF基金(019305)的行动建议:")
+    lines.append("  ─────────────────────────────────────────────────")
+    
+    if result.final_signal == "🟢":
+        if result.valuation_signal == "🟢" and result.debate_consensus == "bullish":
+            lines.append("  • 行动: 可以买入/加仓")
+            lines.append("  • 仓位: 建议配置20-30%仓位")
+            lines.append("  • 策略: 分批买入，每下跌5%加一次")
+            lines.append("  • 止损: 设置-15%止损位")
+        else:
+            lines.append("  • 行动: 可以分批买入")
+            lines.append("  • 仓位: 建议配置10-20%仓位")
+            lines.append("  • 策略: 定投方式，每周定额买入")
+            lines.append("  • 止损: 设置-10%止损位")
+    elif result.final_signal == "🔴":
+        lines.append("  • 行动: 不建议买入，考虑减仓")
+        lines.append("  • 仓位: 已有仓位建议减至5%以下")
+        lines.append("  • 策略: 等待回调，52周位置<50%再考虑")
+        lines.append("  • 止损: 已有仓位设置-10%止损")
+    else:
+        lines.append("  • 行动: 观望，等待更明确信号")
+        lines.append("  • 仓位: 维持现有仓位，不加不减")
+        lines.append("  • 策略: 关注PE和VIX变化")
+        lines.append("  • 止损: 已有仓位设置-12%止损")
+    
+    lines.append("  ─────────────────────────────────────────────────")
+    lines.append("  ⚠️ 免责声明: 以上分析仅供参考，不构成投资建议。")
+    lines.append("     投资有风险，入市需谨慎。")
+    lines.append("═" * 60)
+    
     return "\n".join(lines)
 
 
 def check_sp500_timing(
     debate_rounds: int = 2,
     stock_tickers: list[str] | None = None,
-    topic: str = "当前市场环境下，是否应该投资S&P500?",
+    topic: str = "当前市场环境下，是否应该投资摩根标普500ETF基金(019305)?",
     force_debate: bool = False,
 ) -> TimingResult:
     """

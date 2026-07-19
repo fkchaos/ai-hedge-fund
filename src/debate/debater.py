@@ -128,7 +128,8 @@ class MarketDebater:
         """Format previous rounds for challenge prompt."""
         lines = []
         for r in rounds:
-            lines.append(f"[{r.agent_name}] ({r.signal}, confidence={r.confidence}%):")
+            lines.append(f"【{r.agent_name}】{r.role}")
+            lines.append(f"  信号: {r.signal.upper()} | 置信度: {r.confidence}%")
             lines.append(f"  {r.reasoning}")
             lines.append("")
         return "\n".join(lines)
@@ -157,7 +158,10 @@ class MarketDebater:
         # ── Round 1: Initial views ────────────────────────────────────
         logger.info("=== ROUND 1: Initial Views ===")
         for agent in self.agents:
-            prompt = INITIAL_PROMPT_TEMPLATE.format(market_data=market_data)
+            prompt = INITIAL_PROMPT_TEMPLATE.format(
+                market_data=market_data,
+                name=agent.name,
+            )
             raw = self._call_llm_with_retry(agent.system_prompt, prompt)
             parsed = self._parse_response(raw)
 
