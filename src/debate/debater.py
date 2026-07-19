@@ -187,6 +187,7 @@ class MarketDebater:
                 prompt = CHALLENGE_PROMPT_TEMPLATE.format(
                     previous_views=previous_text,
                     market_data=market_data,
+                    name=agent.name,
                 )
                 raw = self._call_llm_with_retry(agent.system_prompt, prompt)
                 parsed = self._parse_response(raw)
