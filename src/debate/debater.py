@@ -322,6 +322,10 @@ class MarketDebater:
         start_time = time.time()
         result = DebateResult(topic=topic, market_data=market_data)
 
+        # ── 防幻觉：注入当前日期 ──────────────────────────────────
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y年%m月%d日")
+
         # ── 加载历史记忆 ──────────────────────────────────────────
         if spy_price > 0:
             self.history.update_performance(spy_price)  # 更新上一次辩论的后续表现
@@ -340,6 +344,7 @@ class MarketDebater:
                 market_data=market_data,
                 history_context=history_context,
                 name=agent.name,
+                current_date=current_date,
             )
             raw = self._call_llm_safe(agent, agent.system_prompt, prompt)
             result.total_llm_calls += 1
@@ -390,6 +395,7 @@ class MarketDebater:
                         previous_views=previous_text,
                         market_data=market_data,
                         name=agent.name,
+                        current_date=current_date,
                     )
                     raw = self._call_llm_safe(agent, agent.system_prompt, prompt)
                     result.total_llm_calls += 1
@@ -431,6 +437,7 @@ class MarketDebater:
                 market_data=market_data,
                 debate_summary=debate_summary,
                 name=agent.name,
+                current_date=current_date,
             )
             raw = self._call_llm_safe(agent, agent.system_prompt, prompt)
             result.total_llm_calls += 1

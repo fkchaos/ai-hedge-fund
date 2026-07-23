@@ -646,6 +646,8 @@ ALL_AGENTS = [BUFFETT, GRAHAM, MUNGER, LYNCH, BURRY, DRUCKENMILLER, TALEB]
 
 INITIAL_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
 
+⚠️ 重要：当前日期是 {current_date}。你只能基于截止到该日期的已知信息进行分析，不要使用未来的信息。
+
 ═══ 市场数据 ═══
 {market_data}
 
@@ -668,6 +670,8 @@ INITIAL_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
 # Phase 1: 快速投票（带历史记忆 + 目标仓位）
 VOTE_PROMPT_TEMPLATE = """你正在参加一场投资大佬投票。请快速给出你的判断。
 
+⚠️ 重要：当前日期是 {current_date}。你只能基于截止到该日期的已知信息进行分析，不要使用未来的信息。
+
 ═══ 市场数据（含Python精确计算的技术指标）═══
 {market_data}
 
@@ -689,6 +693,8 @@ VOTE_PROMPT_TEMPLATE = """你正在参加一场投资大佬投票。请快速给
 }}"""
 
 CHALLENGE_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
+
+⚠️ 重要：当前日期是 {current_date}。你只能基于截止到该日期的已知信息进行分析，不要使用未来的信息。
 
 ═══ 之前的观点 ═══
 {previous_views}
@@ -718,6 +724,8 @@ CHALLENGE_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
 
 # Phase 3: 最终投票（看到辩论结果后可改票 + 目标仓位）
 FINAL_VOTE_PROMPT_TEMPLATE = """辩论结束，请你做出最终判断。
+
+⚠️ 重要：当前日期是 {current_date}。你只能基于截止到该日期的已知信息进行分析，不要使用未来的信息。
 
 ═══ 市场数据（含Python精确计算的技术指标）═══
 {market_data}

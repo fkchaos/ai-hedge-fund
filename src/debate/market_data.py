@@ -214,6 +214,61 @@ def fetch_us_data(tickers: list[str] | None = None) -> tuple[list[IndexSnapshot]
     except Exception as e:
         logger.warning(f"TNX fetch failed: {e}")
 
+    # ── 短期利率（联邦基金利率代理）──
+    irx_price = None
+    try:
+        irx = yf.Ticker("^IRX")
+        irx_info = irx.info
+        irx_price = _safe_float(irx_info.get("regularMarketPrice"))
+        if irx_price:
+            macro["13周国债收益率(联储利率代理)"] = f"{irx_price:.3f}%"
+            if irx_price > 5:
+                macro["利率环境解读"] = "偏高 — 紧缩周期，流动性偏紧"
+            elif irx_price > 3:
+                macro["利率环境解读"] = "中等 — 限制性利率区间"
+            elif irx_price > 1:
+                macro["利率环境解读"] = "偏低 — 宽松周期"
+            else:
+                macro["利率环境解读"] = "极低 — 近零利率，极度宽松"
+    except Exception as e:
+        logger.warning(f"IRX fetch failed: {e}")
+
+    # ── 5年期国债（中期利率）──
+    fvx_price = None
+    try:
+        fvx = yf.Ticker("^FVX")
+        fvx_info = fvx.info
+        fvx_price = _safe_float(fvx_info.get("regularMarketPrice"))
+        if fvx_price:
+            macro["5年期美债收益率"] = f"{fvx_price:.3f}%"
+    except Exception as e:
+        logger.warning(f"FVX fetch failed: {e}")
+
+    # ── 收益率曲线（10Y-3M利差）──
+    if tnx_price and irx_price:
+        spread_10y_3m = tnx_price - irx_price
+        macro["收益率曲线(10Y-3M利差)"] = f"{spread_10y_3m:+.3f}%"
+        if spread_10y_3m < 0:
+            macro["收益率曲线解读"] = "倒挂 — 衰退信号，历史上准确预测了多数衰退"
+        elif spread_10y_3m < 0.5:
+            macro["收益率曲线解读"] = "平坦 — 经济放缓信号"
+        elif spread_10y_3m > 2:
+            macro["收益率曲线解读"] = "陡峭 — 经济扩张信号"
+        else:
+            macro["收益率曲线解读"] = "正常"
+
+    # ── 期限利差（30Y-10Y）──
+    tyx_price = None
+    try:
+        tyx = yf.Ticker("^TYX")
+        tyx_info = tyx.info
+        tyx_price = _safe_float(tyx_info.get("regularMarketPrice"))
+        if tyx_price and tnx_price:
+            term_spread = tyx_price - tnx_price
+            macro["期限利差(30Y-10Y)"] = f"{term_spread:+.3f}%"
+    except Exception as e:
+        logger.warning(f"TYX fetch failed: {e}")
+
     # ── US Dollar Index ──
     try:
         udx = yf.Ticker("DX-Y.NYB")
