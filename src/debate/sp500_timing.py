@@ -1,5 +1,5 @@
 """
-S&P500 四大佬辩论出手时机判断器 — 标准接口
+S&P500 七大佬辩论出手时机判断器 — 标准接口
 
 用法:
     # 基础用法
@@ -179,7 +179,7 @@ def format_summary(result: TimingResult) -> str:
     if result.debate_enabled:
         lines.append("")
         lines.append("═" * 60)
-        lines.append("  四大佬辩论结论")
+        lines.append("  七大佬辩论结论")
         lines.append("═" * 60)
         
         emoji = {"bullish": "🟢", "bearish": "🔴", "neutral": "⚪"}.get(result.debate_consensus, "⚪")
@@ -249,9 +249,10 @@ def check_sp500_timing(
     stock_tickers: list[str] | None = None,
     topic: str = "当前市场环境下，是否应该投资摩根标普500ETF基金(019305)?",
     force_debate: bool = False,
+    call_timeout: float = 30.0,
 ) -> TimingResult:
     """
-    四大佬辩论判断S&P500出手时机
+    七大佬辩论判断S&P500出手时机
     
     Args:
         debate_rounds: 辩论轮数（默认2）
@@ -311,7 +312,7 @@ def check_sp500_timing(
         result.debate_enabled = True
         
         # 运行辩论
-        debater = MarketDebater(agents=ALL_AGENTS, rounds=debate_rounds)
+        debater = MarketDebater(agents=ALL_AGENTS, rounds=debate_rounds, call_timeout=call_timeout)
         debate_result = debater.run(topic=topic, market_data=bundle.to_text())
         
         # 提取辩论结果
@@ -364,11 +365,12 @@ def check_sp500_timing(
 
 def main():
     """命令行入口"""
-    parser = argparse.ArgumentParser(description="S&P500 四大佬辩论出手时机判断器")
+    parser = argparse.ArgumentParser(description="S&P500 七大佬辩论出手时机判断器")
     parser.add_argument("--rounds", type=int, default=2, help="辩论轮数（默认2）")
     parser.add_argument("--stocks", type=str, default=None, help="个股代码（逗号分隔）")
     parser.add_argument("--topic", type=str, default="当前市场环境下，是否应该投资S&P500?", help="辩论主题")
     parser.add_argument("--force-debate", action="store_true", help="强制辩论")
+    parser.add_argument("--timeout", type=float, default=30.0, help="LLM单次调用超时秒数（默认30）")
     parser.add_argument("--json", action="store_true", help="JSON输出")
     parser.add_argument("--brief", action="store_true", help="简洁模式")
     args = parser.parse_args()
@@ -382,6 +384,7 @@ def main():
         stock_tickers=stock_tickers,
         topic=args.topic,
         force_debate=args.force_debate,
+        call_timeout=args.timeout,
     )
     
     if args.json:
