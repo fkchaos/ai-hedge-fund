@@ -62,6 +62,7 @@ class TimingResult:
     debate_agreement: list[str] = field(default_factory=list)  # 一致同意点
     debate_risks: list[str] = field(default_factory=list)      # 风险提示
     action_items: list[str] = field(default_factory=list)      # 行动建议
+    avg_target_position: int = 0  # 七大佬平均目标仓位 0-100%
     
     # 综合判断
     final_signal: str = ""   # 最终信号
@@ -184,6 +185,21 @@ def format_summary(result: TimingResult) -> str:
         
         emoji = {"bullish": "🟢", "bearish": "🔴", "neutral": "⚪"}.get(result.debate_consensus, "⚪")
         lines.append(f"  共识: {emoji} {result.debate_consensus.upper()} | 平均置信度: {result.debate_confidence}%")
+
+        # 目标仓位
+        if result.avg_target_position > 0:
+            pos = result.avg_target_position
+            if pos >= 80:
+                pos_emoji = "🟢 满仓区间"
+            elif pos >= 60:
+                pos_emoji = "🟢 偏多"
+            elif pos >= 40:
+                pos_emoji = "⚪ 中性"
+            elif pos >= 20:
+                pos_emoji = "🟠 偏空"
+            else:
+                pos_emoji = "🔴 轻仓区间"
+            lines.append(f"  📊 七大佬平均目标仓位: {pos}% {pos_emoji}")
         
         if result.debate_agreement:
             lines.append("")
@@ -328,6 +344,7 @@ def check_sp500_timing(
             result.debate_agreement = c.get("agreement_points", [])
             result.debate_risks = c.get("risks", [])
             result.action_items = c.get("action_items", [])
+            result.avg_target_position = debate_result.avg_target_position
     
     # 综合判断
     if result.debate_enabled and result.debate_consensus:
@@ -408,6 +425,7 @@ def main():
                 "enabled": result.debate_enabled,
                 "consensus": result.debate_consensus,
                 "confidence": result.debate_confidence,
+                "avg_target_position": result.avg_target_position,
                 "agreement": result.debate_agreement,
                 "risks": result.debate_risks,
                 "action_items": result.action_items,
@@ -423,7 +441,7 @@ def main():
         print(f"\n{result.final_signal} S&P500出手时机: {result.final_advice}")
         print(f"  SPY: ${result.spy_price:.2f} | PE: {result.pe:.1f} | VIX: {result.vix} | 52周: {result.pos_52w:.0f}%")
         if result.debate_enabled:
-            print(f"  辩论: {emoji} {result.debate_consensus.upper()} | 置信度: {result.debate_confidence}%")
+            print(f"  辩论: {emoji} {result.debate_consensus.upper()} | 置信度: {result.debate_confidence}% | 目标仓位: {result.avg_target_position}%")
     else:
         print(result.summary)
 

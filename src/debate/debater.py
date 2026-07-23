@@ -49,6 +49,7 @@ class DebateRound:
     reasoning: str
     raw_response: str = ""
     phase: str = ""  # "vote", "challenge", "final_vote", "synthesis"
+    target_position: int = 50  # 目标仓位 0-100%
 
 
 @dataclass
@@ -75,6 +76,7 @@ class DebateResult:
     skipped_agents: List[str] = field(default_factory=list)
     phase_times: dict = field(default_factory=dict)  # phase -> seconds
     debate_record_id: str = ""  # 保存到历史的记录ID
+    avg_target_position: int = 50  # 各大佬平均目标仓位
 
 
 class MarketDebater:
@@ -215,7 +217,8 @@ class MarketDebater:
         lines = []
         for r in rounds:
             lines.append(f"【{r.agent_name}】{r.role}")
-            lines.append(f"  信号: {r.signal.upper()} | 置信度: {r.confidence}%")
+            pos_str = f" | 仓位: {r.target_position}%" if r.phase in ("vote", "final_vote") else ""
+            lines.append(f"  信号: {r.signal.upper()} | 置信度: {r.confidence}%{pos_str}")
             lines.append(f"  {r.reasoning}")
             lines.append("")
         return "\n".join(lines)
@@ -350,6 +353,7 @@ class MarketDebater:
                 reasoning=parsed.get("reasoning", ""),
                 raw_response=raw,
                 phase="vote",
+                target_position=parsed.get("target_position", 50),
             )
             vote_rounds.append(round_obj)
             result.rounds.append(round_obj)
@@ -399,6 +403,7 @@ class MarketDebater:
                         reasoning=parsed.get("reasoning", ""),
                         raw_response=raw,
                         phase="challenge",
+                        target_position=parsed.get("target_position", 50),
                     )
                     challenge_results.append(round_obj)
                     result.rounds.append(round_obj)
@@ -439,6 +444,7 @@ class MarketDebater:
                 reasoning=parsed.get("reasoning", ""),
                 raw_response=raw,
                 phase="final_vote",
+                target_position=parsed.get("target_position", 50),
             )
             final_rounds.append(round_obj)
             result.rounds.append(round_obj)
@@ -470,6 +476,13 @@ class MarketDebater:
         result.skipped_agents = [
             name for name, s in self._statuses.items() if s.is_disabled
         ]
+
+        # 计算平均目标仓位（从final_vote阶段）
+        final_votes = [r for r in result.rounds if r.phase == "final_vote"]
+        if final_votes:
+            result.avg_target_position = round(
+                sum(r.target_position for r in final_votes) / len(final_votes)
+            )
 
         # Log diagnostics
         active = sum(1 for s in self._statuses.values() if not s.is_disabled)

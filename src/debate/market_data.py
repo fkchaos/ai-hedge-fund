@@ -67,12 +67,18 @@ class MarketDataBundle:
     stocks: list[StockSnapshot] = field(default_factory=list)
     recent_trend: str = ""
     timestamp: str = ""
+    quant_signals: str = ""  # 量化预计算指标（技术+估值）
 
     def to_text(self) -> str:
         """Format as readable text for LLM context."""
         lines = []
         lines.append(f"市场数据快照 ({self.timestamp})")
         lines.append("=" * 60)
+
+        # ── 量化预计算指标（优先展示）──
+        if self.quant_signals:
+            lines.append("")
+            lines.append(self.quant_signals)
 
         # ── Macro ──
         if self.macro:
@@ -358,5 +364,15 @@ def get_market_data(
 
     # Recent trend
     bundle.recent_trend = fetch_recent_trend("SPY", 10)
+
+    # 量化预计算指标（技术+估值）
+    try:
+        from .quant_signals import format_quant_summary
+        spy_price = 0
+        if bundle.us_indices:
+            spy_price = bundle.us_indices[0].price or 0
+        bundle.quant_signals = format_quant_summary(spy_price)
+    except Exception as e:
+        logger.warning(f"Quant signals failed: {e}")
 
     return bundle

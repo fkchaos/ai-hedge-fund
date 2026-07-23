@@ -665,25 +665,27 @@ INITIAL_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
   "reasoning": "2-4句话，用{name}的风格，必须包含关键数据"
 }}"""
 
-# Phase 1: 快速投票（带历史记忆）
+# Phase 1: 快速投票（带历史记忆 + 目标仓位）
 VOTE_PROMPT_TEMPLATE = """你正在参加一场投资大佬投票。请快速给出你的判断。
 
-═══ 市场数据 ═══
+═══ 市场数据（含Python精确计算的技术指标）═══
 {market_data}
 
 {history_context}
 
 ═══ 你的任务 ═══
 作为{name}，基于市场数据和历史参考，用你的投资框架快速判断：
-- S&P500当前应该买入、卖出还是观望？
+- S&P500当前应该持有多少仓位？（0%=全现金，100%=满仓SPY）
 - 用1-2句话说明理由
 - 如果有历史记录，可以参考但不要盲从——市场在变
+- 注意：市场数据中已包含Python计算的精确技术指标（RSI/MACD/MA/BB），请直接引用这些数字
 
 ═══ 输出格式 ═══
 {{
   "signal": "bullish" | "bearish" | "neutral",
   "confidence": 0-100,
-  "reasoning": "1-2句话，用{name}的核心逻辑"
+  "target_position": 0-100,
+  "reasoning": "1-2句话，用{name}的核心逻辑，必须引用具体技术指标数字"
 }}"""
 
 CHALLENGE_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
@@ -714,10 +716,10 @@ CHALLENGE_PROMPT_TEMPLATE = """你正在参加一场投资大佬辩论。
   "reasoning": "直接挑战其他大佬的观点，用具体数据支持"
 }}"""
 
-# Phase 3: 最终投票（看到辩论结果后可改票）
+# Phase 3: 最终投票（看到辩论结果后可改票 + 目标仓位）
 FINAL_VOTE_PROMPT_TEMPLATE = """辩论结束，请你做出最终判断。
 
-═══ 市场数据 ═══
+═══ 市场数据（含Python精确计算的技术指标）═══
 {market_data}
 
 ═══ 辩论结果 ═══
@@ -727,13 +729,14 @@ FINAL_VOTE_PROMPT_TEMPLATE = """辩论结束，请你做出最终判断。
 作为{name}，看到辩论结果后：
 1. 你的观点是否需要调整？（可以改票，也可以坚持）
 2. 如果调整了，为什么？
-3. 给出最终的信号和置信度
+3. 给出最终的目标仓位和置信度
 
 ═══ 输出格式 ═══
 {{
   "signal": "bullish" | "bearish" | "neutral",
   "confidence": 0-100,
-  "reasoning": "最终判断的理由，1-2句话"
+  "target_position": 0-100,
+  "reasoning": "最终判断的理由，1-2句话，引用具体技术指标数字"
 }}"""
 
 
