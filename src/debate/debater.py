@@ -1,4 +1,4 @@
-"""Core debate engine — Phase 1/2/3 focused debate mechanism.
+"""Core debate engine — Phase 1/2/3 focused debate mechanism with memory.
 
 Phase 1 (Vote):     All agents快速投票 → 统计分歧
 Phase 2 (Challenge): 只让有分歧的代表深入辩论 → 聚焦核心争议
@@ -8,6 +8,8 @@ Synthesis:           主持人综合出结论
 Features:
 - Per-agent timeout with graceful degradation
 - Intermediate checkpoints saved after each phase
+- History memory: load past debates for agent context
+- Performance tracking: track SPY change after each debate
 - Supports 4-7+ agents without timeout issues
 """
 
@@ -32,6 +34,7 @@ from .agents import (
     SYNTHESIS_PROMPT,
 )
 from .llm import MiMoLLM
+from .history import DebateHistory, DebateRecord, record_from_debate_result
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +74,7 @@ class DebateResult:
     total_time: float = 0.0
     skipped_agents: List[str] = field(default_factory=list)
     phase_times: dict = field(default_factory=dict)  # phase -> seconds
+    debate_record_id: str = ""  # 保存到历史的记录ID
 
 
 class MarketDebater:
@@ -90,6 +94,8 @@ class MarketDebater:
         rounds: int = 2,
         call_timeout: float = 30.0,
         checkpoint_dir: str | Path | None = None,
+        history_dir: str | Path | None = None,
+        memory_rounds: int = 3,
     ):
         self.agents = agents or ALL_AGENTS
         self.llm = llm or MiMoLLM(timeout=call_timeout)
@@ -99,6 +105,9 @@ class MarketDebater:
         self._statuses: dict[str, AgentStatus] = {
             a.name: AgentStatus(name=a.name) for a in self.agents
         }
+        # 历史记忆系统
+        self.history = DebateHistory(history_dir)
+        self.memory_rounds = memory_rounds  # 加载最近N次辩论作为记忆
 
     # ── LLM call with timeout + graceful degradation ──────────────────
 
@@ -290,16 +299,33 @@ class MarketDebater:
     # Main debate flow
     # ══════════════════════════════════════════════════════════════════
 
-    def run(self, topic: str, market_data: str) -> DebateResult:
-        """Run a focused multi-phase debate.
+    def run(self, topic: str, market_data: str, spy_price: float = 0.0,
+            pe: float = 0.0, vix: float = 0.0, pos_52w: float = 0.0,
+            tnx_10y: float = 0.0, valuation_signal: str = "") -> DebateResult:
+        """Run a focused multi-phase debate with memory.
 
         Phase 1 — Vote:        All agents快速投票 (N calls)
         Phase 2 — Challenge:   代表深入辩论 (最多4人 × challenge_rounds calls)
         Phase 3 — Final Vote:  所有人最终表态 (N calls)
         Synthesis:             主持人综合 (1 call)
+
+        Args:
+            topic: 辩论主题
+            market_data: 市场数据文本
+            spy_price: 当前SPY价格（用于表现追踪）
+            pe/vix/pos_52w/tnx_10y: 估值指标（用于历史记录）
+            valuation_signal: 估值信号（用于历史记录）
         """
         start_time = time.time()
         result = DebateResult(topic=topic, market_data=market_data)
+
+        # ── 加载历史记忆 ──────────────────────────────────────────
+        if spy_price > 0:
+            self.history.update_performance(spy_price)  # 更新上一次辩论的后续表现
+
+        history_context = self.history.format_memory_context(n=self.memory_rounds)
+        if history_context:
+            logger.info(f"  Loaded {self.memory_rounds} debate records as memory")
 
         # ── Phase 1: Vote ─────────────────────────────────────────────
         phase_start = time.time()
@@ -309,6 +335,7 @@ class MarketDebater:
         for agent in self.agents:
             prompt = VOTE_PROMPT_TEMPLATE.format(
                 market_data=market_data,
+                history_context=history_context,
                 name=agent.name,
             )
             raw = self._call_llm_safe(agent, agent.system_prompt, prompt)
@@ -454,4 +481,16 @@ class MarketDebater:
             logger.warning(f"  Skipped agents: {', '.join(result.skipped_agents)}")
 
         self._save_checkpoint(result, "final")
+
+        # ── 保存辩论记录到历史 ──────────────────────────────────────
+        record = record_from_debate_result(
+            result, topic=topic, market_data=market_data,
+            spy_price=spy_price, pe=pe, vix=vix,
+            pos_52w=pos_52w, tnx_10y=tnx_10y,
+            valuation_signal=valuation_signal,
+        )
+        record_path = self.history.save(record)
+        result.debate_record_id = record.id
+        logger.info(f"  Debate record saved: {record_path.name} (id={record.id})")
+
         return result

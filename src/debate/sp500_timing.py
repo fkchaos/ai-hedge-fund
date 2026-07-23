@@ -313,7 +313,12 @@ def check_sp500_timing(
         
         # 运行辩论
         debater = MarketDebater(agents=ALL_AGENTS, rounds=debate_rounds, call_timeout=call_timeout)
-        debate_result = debater.run(topic=topic, market_data=bundle.to_text())
+        debate_result = debater.run(
+            topic=topic, market_data=bundle.to_text(),
+            spy_price=result.spy_price, pe=result.pe, vix=result.vix,
+            pos_52w=result.pos_52w, tnx_10y=result.tnx_10y,
+            valuation_signal=result.valuation_signal,
+        )
         
         # 提取辩论结果
         if debate_result.consensus:
